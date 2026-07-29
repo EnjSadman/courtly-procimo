@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(USER)
+  bookings     Booking[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model SportType {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  courts Court[]
+}
+
+model Court {
+  id          String        @id @default(uuid())
+  name        String
+  sportTypeId String
+  sportType   SportType     @relation(fields: [sportTypeId], references: [id])
+  hourlyPrice Decimal
+  openTime    String
+  closeTime   String
+  isActive    Boolean       @default(true)
+  bookings    Booking[]
+  slots       BookingSlot[]
+}
+
+model Booking {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  courtId      String
+  court        Court         @relation(fields: [courtId], references: [id])
+  startsAt     DateTime
+  duration     Int
+  price        Decimal
+  status       BookingStatus @default(CONFIRMED)
+  activityNote String?       @db.VarChar(255)
+  createdAt    DateTime      @default(now())
+  slots        BookingSlot[]
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model BookingSlot {
+  id        String   @id @default(uuid())
+  courtId   String
+  court     Court    @relation(fields: [courtId], references: [id])
+  startsAt  DateTime
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([courtId, startsAt])
+}
+
+

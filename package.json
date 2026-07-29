@@ -1,0 +1,11 @@
+{
+  "name": "courtly-procimo",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs"
+  }
+}

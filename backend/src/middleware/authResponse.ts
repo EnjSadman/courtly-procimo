@@ -10,13 +10,17 @@ export async function authResponse(
   res: Response,
   next: NextFunction,
 ) {
-  const { role, id } = req.authenticatedUser ?? { role: Role.USER, id: null };
+  const { role, id, email } = req.authenticatedUser ?? {
+    role: Role.USER,
+    id: null,
+    email: "",
+  };
   if (!id) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   const redirectPath = role === Role.ADMIN ? "/admin/dashboard" : "/dashboard";
   try {
-    const token = await new SignJWT({ role, id })
+    const token = await new SignJWT({ role, id, email })
       .setProtectedHeader({ alg: "HS256" })
       .setExpirationTime(jwtExpiration)
       .sign(new TextEncoder().encode(jwtSecret as string));

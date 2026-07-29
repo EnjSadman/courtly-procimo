@@ -2,6 +2,9 @@ import express, { type Request, type Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import { authRouter } from "@/routes/auth";
+import { profilesRouter } from "@/routes/profiles";
+import { courtsRouter } from "@/routes/courts";
+import { sportTypesRouter } from "@/routes/sportTypes";
 import { errorHandler } from "@/middleware/errorHandler";
 import rateLimit from "express-rate-limit";
 
@@ -27,5 +30,8 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 app.use("/auth", authRouter);
+app.use("/profiles", profilesRouter);
+app.use("/courts", courtsRouter);
+app.use("/sport-types", sportTypesRouter);
 
 app.use(errorHandler);

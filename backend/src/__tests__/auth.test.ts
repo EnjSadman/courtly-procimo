@@ -31,6 +31,7 @@ import request from "supertest";
 import bcrypt from "bcrypt";
 import { Role } from "@prisma/client";
 import { authRouter } from "@/routes/auth";
+import { errorHandler } from "@/middleware/errorHandler";
 import { prisma } from "@/lib/prisma";
 
 const mockedPrismaFindUnique = jest.mocked(prisma.user.findUnique);
@@ -44,6 +45,7 @@ function createTestApp() {
   const app = express();
   app.use(express.json());
   app.use("/auth", authRouter);
+  app.use(errorHandler);
   return app;
 }
 
@@ -196,6 +198,18 @@ describe("auth router", () => {
     });
     expect(response.headers["set-cookie"]).toEqual(
       expect.arrayContaining([expect.stringContaining("token=")]),
+    );
+  });
+
+  it("clears the auth cookie on logout", async () => {
+    const response = await request(createTestApp()).post("/auth/logout");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      redirect: "http://localhost:3000/sign-in",
+    });
+    expect(response.headers["set-cookie"]).toEqual(
+      expect.arrayContaining([expect.stringContaining("token=;")]),
     );
   });
 });

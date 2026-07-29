@@ -8,8 +8,16 @@ import bcrypt from "bcrypt";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { authResponse } from "@/middleware/authResponse";
+import { frontendUrl } from "@/config";
 
 const router = Router();
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict" as const,
+  path: "/",
+};
 
 const loginSchema = z.object({
   email: z.email("Please enter a valid email address."),
@@ -115,7 +123,13 @@ async function registerUser(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
+function logout(_req: Request, res: Response) {
+  res.clearCookie("token", cookieOptions);
+  return res.json({ redirect: `${frontendUrl}/sign-in` });
+}
+
 router.post("/login", validateCredentials, authResponse);
 router.post("/register", registerUser, authResponse);
+router.post("/logout", logout);
 
 export const authRouter = router;

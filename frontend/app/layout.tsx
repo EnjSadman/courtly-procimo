@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Figtree, Syne, Geist } from "next/font/google";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { ThemeScript } from "@/components/theme/ThemeScript";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,9 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className="flex min-h-dvh flex-col bg-background font-body text-foreground">
-        <ThemeProvider>{children}</ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

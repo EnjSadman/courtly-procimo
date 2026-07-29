@@ -71,7 +71,11 @@ export function SignInForm() {
   return (
     <SignInUpContainer>
       <h2 className="text-2xl font-bold text-background">Sign in</h2>
-      <form onSubmit={handleSubmit} className="w-full space-y-4" autoComplete="on">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full space-y-4"
+        autoComplete="on"
+      >
         <label htmlFor="email" className="sr-only">
           Email
         </label>
@@ -114,10 +118,7 @@ export function SignInForm() {
           <InputGroupAddon>
             <Checkbox id="remember" disabled={isSubmitting} />
           </InputGroupAddon>
-          <label
-            htmlFor="remember"
-            className="text-sm text-background/50"
-          >
+          <label htmlFor="remember" className="text-sm text-background/50">
             Remember me
           </label>
         </InputGroup>

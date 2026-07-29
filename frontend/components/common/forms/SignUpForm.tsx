@@ -34,7 +34,8 @@ export function SignUpForm() {
 
     if (Array.isArray(errors)) {
       const readableErrors = errors.filter(
-        (error): error is string => typeof error === "string" && error.length > 0,
+        (error): error is string =>
+          typeof error === "string" && error.length > 0,
       );
 
       if (readableErrors.length > 0) {
@@ -84,7 +85,9 @@ export function SignUpForm() {
         : null;
 
       if (!response.ok) {
-        setErrorMessage(getResponseErrorMessage(responseBody) || "Sign up failed.");
+        setErrorMessage(
+          getResponseErrorMessage(responseBody) || "Sign up failed.",
+        );
         return;
       }
 
@@ -120,7 +123,11 @@ export function SignUpForm() {
   return (
     <SignInUpContainer>
       <h2 className="text-2xl font-bold text-background">Sign up</h2>
-      <form onSubmit={handleSubmit} className="w-full space-y-4" autoComplete="on">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full space-y-4"
+        autoComplete="on"
+      >
         <label htmlFor="email" className="sr-only">
           Email
         </label>

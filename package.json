@@ -9,6 +9,8 @@
     "dev": "node scripts/dev.mjs"
   },
   "dependencies": {
+    "express-rate-limit": "^8.6.1",
+    "helmet": "^8.3.0",
     "jose": "^6.2.4"
   }
 }

@@ -1,12 +1,15 @@
-import express, {
-  type ErrorRequestHandler,
-  type Request,
-  type Response,
-} from "express";
+import express, { type Request, type Response } from "express";
 import cors from "cors";
-import { authRouter } from "./routes/auth";
+import helmet from "helmet";
+import { authRouter } from "@/routes/auth";
+import { errorHandler } from "@/middleware/errorHandler";
+import rateLimit from "express-rate-limit";
 
 export const app = express();
+export const globalLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 100,
+});
 
 app.use(
   cors({
@@ -16,16 +19,13 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(helmet());
+app.use(globalLimiter);
 
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
 app.use("/auth", authRouter);
-
-const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
-  console.error(error);
-  res.status(500).json({ message: "Internal server error." });
-};
 
 app.use(errorHandler);

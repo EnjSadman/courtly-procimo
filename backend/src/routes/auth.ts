@@ -1,15 +1,29 @@
-import { Router, type NextFunction, type Request, type Response } from "express";
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { redirectByRole } from "@/middleware/redirectByRole";
+import { authResponse } from "@/middleware/authResponse";
 
 const router = Router();
 
 const loginSchema = z.object({
-  email: z.email(),
-  password: z.string().min(1),
+  email: z.email("Please enter a valid email address."),
+  password: z.string().min(1, "Please enter your password."),
 });
+
+const registerSchema = z.object({
+  email: z.email("Please enter a valid email address."),
+  password: z.string().min(8, "Password must be at least 8 characters long."),
+});
+
+function formatValidationErrors(error: z.ZodError) {
+  return error.issues.map((issue) => issue.message);
+}
 
 async function validateCredentials(
   req: Request,
@@ -19,8 +33,11 @@ async function validateCredentials(
   const parsedCredentials = loginSchema.safeParse(req.body);
 
   if (!parsedCredentials.success) {
+    const errors = formatValidationErrors(parsedCredentials.error);
+
     return res.status(400).json({
-      message: "Invalid login payload.",
+      message: errors.join(" "),
+      errors,
       issues: z.treeifyError(parsedCredentials.error),
     });
   }
@@ -55,6 +72,50 @@ async function validateCredentials(
   return next();
 }
 
-router.post("/login", validateCredentials, redirectByRole);
+async function registerUser(req: Request, res: Response, next: NextFunction) {
+  const parsedRegistration = registerSchema.safeParse(req.body);
+
+  if (!parsedRegistration.success) {
+    const errors = formatValidationErrors(parsedRegistration.error);
+
+    return res.status(400).json({
+      message: errors.join(" "),
+      errors,
+      issues: z.treeifyError(parsedRegistration.error),
+    });
+  }
+
+  const { email, password } = parsedRegistration.data;
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+
+  if (existingUser) {
+    return res
+      .status(409)
+      .json({ message: "An account with this email already exists." });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await prisma.user.create({
+    data: {
+      email,
+      passwordHash,
+    },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+    },
+  });
+
+  req.authenticatedUser = user;
+
+  return next();
+}
+
+router.post("/login", validateCredentials, authResponse);
+router.post("/register", registerUser, authResponse);
 
 export const authRouter = router;

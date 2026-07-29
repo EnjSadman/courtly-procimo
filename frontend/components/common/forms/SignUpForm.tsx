@@ -8,25 +8,65 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Lock, Mail } from "lucide-react";
 import Link from "next/link";
 
-export function SignInForm() {
+export function SignUpForm() {
   const inputGroupClassName = "h-10 w-full border-background/10";
   const backendApiUrl =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const trimmedEmail = email.trim();
 
-  async function submitCredentials(nextEmail: string, nextPassword: string) {
+  function getResponseErrorMessage(responseBody: unknown) {
+    if (!responseBody || typeof responseBody !== "object") {
+      return null;
+    }
+
+    const { errors, message } = responseBody as {
+      errors?: unknown;
+      message?: unknown;
+    };
+
+    if (Array.isArray(errors)) {
+      const readableErrors = errors.filter(
+        (error): error is string => typeof error === "string" && error.length > 0,
+      );
+
+      if (readableErrors.length > 0) {
+        return readableErrors.join(" ");
+      }
+    }
+
+    return typeof message === "string" ? message : null;
+  }
+
+  function getClientValidationError() {
+    if (!trimmedEmail.includes("@")) {
+      return "Please enter a valid email address.";
+    }
+
+    if (password.trim().length < 8) {
+      return "Password must be at least 8 characters long.";
+    }
+
+    if (password !== confirmPassword) {
+      return "Passwords do not match.";
+    }
+
+    return null;
+  }
+
+  async function submitRegistration(nextEmail: string, nextPassword: string) {
     setIsSubmitting(true);
     setErrorMessage("");
 
     try {
-      const response = await fetch(`${backendApiUrl}/auth/login`, {
+      const response = await fetch(`${backendApiUrl}/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,7 +84,7 @@ export function SignInForm() {
         : null;
 
       if (!response.ok) {
-        setErrorMessage(responseBody?.message || "Sign in failed.");
+        setErrorMessage(getResponseErrorMessage(responseBody) || "Sign up failed.");
         return;
       }
 
@@ -53,7 +93,7 @@ export function SignInForm() {
         return;
       }
 
-      setErrorMessage("Sign in succeeded, but no redirect was returned.");
+      setErrorMessage("Sign up succeeded, but no redirect was returned.");
     } catch {
       setErrorMessage("Unable to reach the server.");
     } finally {
@@ -63,14 +103,23 @@ export function SignInForm() {
 
   async function handleSubmit(event: React.SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    await submitCredentials(email, password);
+
+    const validationError = getClientValidationError();
+
+    if (validationError) {
+      setErrorMessage(validationError);
+      return;
+    }
+
+    await submitRegistration(trimmedEmail, password);
   }
 
-  const isFormIncomplete = !email.trim() || !password.trim();
+  const isFormIncomplete =
+    !email.trim() || !password.trim() || !confirmPassword.trim();
 
   return (
     <SignInUpContainer>
-      <h2 className="text-2xl font-bold text-background">Sign in</h2>
+      <h2 className="text-2xl font-bold text-background">Sign up</h2>
       <form onSubmit={handleSubmit} className="w-full space-y-4" autoComplete="on">
         <label htmlFor="email" className="sr-only">
           Email
@@ -85,7 +134,10 @@ export function SignInForm() {
             type="email"
             placeholder="Email"
             value={email}
-            onChange={(event) => setEmail(event.target.value)}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              setErrorMessage("");
+            }}
             autoComplete="email"
             aria-invalid={Boolean(errorMessage)}
             disabled={isSubmitting}
@@ -104,22 +156,36 @@ export function SignInForm() {
             type="password"
             placeholder="Password"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setErrorMessage("");
+            }}
+            autoComplete="new-password"
             aria-invalid={Boolean(errorMessage)}
             disabled={isSubmitting}
           />
         </InputGroup>
-        <InputGroup className="gap-2">
+        <label htmlFor="confirm-password" className="sr-only">
+          Confirm password
+        </label>
+        <InputGroup className={inputGroupClassName}>
           <InputGroupAddon>
-            <Checkbox id="remember" disabled={isSubmitting} />
+            <Lock size={16} className="text-background" />
           </InputGroupAddon>
-          <label
-            htmlFor="remember"
-            className="text-sm text-background/50"
-          >
-            Remember me
-          </label>
+          <InputGroupInput
+            id="confirm-password"
+            name="confirmPassword"
+            type="password"
+            placeholder="Confirm password"
+            value={confirmPassword}
+            onChange={(event) => {
+              setConfirmPassword(event.target.value);
+              setErrorMessage("");
+            }}
+            autoComplete="new-password"
+            aria-invalid={Boolean(errorMessage)}
+            disabled={isSubmitting}
+          />
         </InputGroup>
         {errorMessage ? (
           <p className="text-sm text-destructive" role="alert">
@@ -131,17 +197,17 @@ export function SignInForm() {
           className="w-full"
           disabled={isSubmitting || isFormIncomplete}
         >
-          {isSubmitting ? "Signing in..." : "Sign in"}
+          {isSubmitting ? "Signing up..." : "Sign up"}
         </Button>
         <div>
           <span className="text-sm text-background/50">
-            Don&apos;t have an account?
+            Already have an account?
           </span>{" "}
           <Link
-            href="/sign-up"
+            href="/sign-in"
             className="text-sm text-background/50 underline hover:text-background"
           >
-            Sign up
+            Sign in
           </Link>
         </div>
       </form>

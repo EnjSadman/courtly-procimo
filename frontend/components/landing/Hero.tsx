@@ -20,8 +20,7 @@ export function Hero() {
         <p className="max-w-md animate-fade-up-late text-base leading-relaxed text-on-media-muted">
           Reserve tennis and padel courts in a few{" "}
           <span className="sm:hidden">taps</span>
-          <span className="hidden sm:inline">clicks</span> - clear times, fair
-          prices, no phone tag.
+          <span className="hidden sm:inline">clicks</span>
         </p>
         <Link
           href="/sign-up"

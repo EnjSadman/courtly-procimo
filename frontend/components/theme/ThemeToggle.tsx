@@ -1,21 +1,24 @@
 "use client";
 
-import { useTheme } from "./ThemeProvider";
+import { useTheme } from "@/components/theme/ThemeProvider";
+import { Button } from "@/components/ui/button";
 
 export function ThemeToggle({ className = "" }: { className?: string }) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       onClick={toggleTheme}
-      className={`inline-flex size-10 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-ghost-hover ${className}`.trim()}
+      className={className}
       aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
       title={isDark ? "Light theme" : "Dark theme"}
     >
       {isDark ? <SunIcon /> : <MoonIcon />}
-    </button>
+    </Button>
   );
 }
 

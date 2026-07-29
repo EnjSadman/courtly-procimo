@@ -24,8 +24,14 @@ export function subscribeToTheme(onStoreChange: () => void) {
   };
 }
 
+export function applyThemeToDocument(theme: Theme) {
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  root.classList.toggle("dark", theme === "dark");
+}
+
 export function writeTheme(theme: Theme) {
   window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-  document.documentElement.dataset.theme = theme;
+  applyThemeToDocument(theme);
   window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
 }

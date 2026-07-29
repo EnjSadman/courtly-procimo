@@ -25,6 +25,21 @@ function run(command, args, options = {}) {
   });
 }
 
+function spawnLongRunning(command, args, options = {}) {
+  const child = spawn(command, args, {
+    cwd: rootDir,
+    stdio: "inherit",
+    ...options,
+  });
+
+  child.on("error", (error) => {
+    console.error(error);
+    process.exit(1);
+  });
+
+  return child;
+}
+
 function runQuiet(command, args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -135,8 +150,15 @@ async function main() {
   console.info("Preparing Prisma schema and seed data...");
   await run("npm", ["run", "db:prepare", "--workspace", "backend"]);
 
+  console.info("Starting backend server...");
+  const backend = spawnLongRunning("npm", ["run", "dev", "--workspace", "backend"]);
+
   console.info("Starting frontend dev server...");
-  await run("npm", ["run", "dev", "--workspace", "frontend"]);
+  try {
+    await run("npm", ["run", "dev", "--workspace", "frontend"]);
+  } finally {
+    backend.kill("SIGTERM");
+  }
 }
 
 main().catch((error) => {

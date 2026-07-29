@@ -2,8 +2,11 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/server.js",
   "scripts": {
+    "dev": "TS_NODE_PROJECT=./tsconfig.json node --env-file=.env -r ts-node/register/transpile-only ./src/server.ts",
+    "build": "tsc",
+    "start": "node --env-file=.env dist/server.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",

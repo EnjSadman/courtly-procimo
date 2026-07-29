@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Logo } from "./Logo";
-import { ThemeToggle } from "./ThemeToggle";
+import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -41,13 +43,13 @@ export function Header() {
           <nav className="flex items-center gap-2" aria-label="Account">
             <Link
               href="/sign-in"
-              className="inline-flex min-h-10 items-center justify-center rounded-lg bg-transparent px-4 py-2 text-sm font-semibold text-foreground no-underline transition-colors hover:bg-ghost-hover"
+              className={buttonVariants({ variant: "ghost" })}
             >
               Sign in
             </Link>
             <Link
               href="/sign-up"
-              className="inline-flex min-h-10 items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-ink no-underline transition-colors hover:bg-accent-hover"
+              className={buttonVariants({ variant: "default" })}
             >
               Sign up
             </Link>
@@ -55,16 +57,17 @@ export function Header() {
         </div>
         <div className="flex items-center gap-1 md:hidden">
           <ThemeToggle />
-          <button
+          <Button
             type="button"
-            className="inline-flex size-10 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-ghost-hover"
+            variant="ghost"
+            size="icon"
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             onClick={() => setMenuOpen((open) => !open)}
           >
             {menuOpen ? <CloseIcon /> : <MenuIcon />}
-          </button>
+          </Button>
         </div>
       </div>
       {menuOpen ? (
@@ -85,14 +88,20 @@ export function Header() {
             >
               <Link
                 href="/sign-in"
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-border bg-transparent px-4 py-2 text-sm font-semibold text-foreground no-underline transition-colors hover:bg-ghost-hover"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "lg" }),
+                  "w-full"
+                )}
                 onClick={() => setMenuOpen(false)}
               >
                 Sign in
               </Link>
               <Link
                 href="/sign-up"
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-ink no-underline transition-colors hover:bg-accent-hover"
+                className={cn(
+                  buttonVariants({ variant: "default", size: "lg" }),
+                  "w-full"
+                )}
                 onClick={() => setMenuOpen(false)}
               >
                 Sign up

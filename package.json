@@ -7,5 +7,8 @@
   ],
   "scripts": {
     "dev": "node scripts/dev.mjs"
+  },
+  "dependencies": {
+    "jose": "^6.2.4"
   }
 }

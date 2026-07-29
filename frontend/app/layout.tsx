@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Figtree, Syne } from "next/font/google";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeScript } from "@/components/ThemeScript";
 import "./globals.css";
 
 const syne = Syne({
@@ -29,9 +31,14 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${syne.variable} ${figtree.variable} min-h-dvh antialiased`}
+      data-theme="dark"
+      suppressHydrationWarning
     >
+      <head>
+        <ThemeScript />
+      </head>
       <body className="flex min-h-dvh flex-col bg-background font-body text-foreground">
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

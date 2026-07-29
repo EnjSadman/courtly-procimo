@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-:root {
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
   --background: #06140f;
   --foreground: #f3f7f4;
   --muted: #a8bdb2;
@@ -11,11 +13,35 @@
   --border: rgb(255 255 255 / 0.12);
   --header: rgb(6 20 15 / 0.72);
   --ghost-hover: rgb(255 255 255 / 0.08);
+  --on-media: #f3f7f4;
+  --on-media-muted: #a8bdb2;
   --scrim: linear-gradient(
     180deg,
     rgb(6 20 15 / 0.55) 0%,
     rgb(6 20 15 / 0.72) 45%,
     rgb(6 20 15 / 0.88) 100%
+  );
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #eef3ef;
+  --foreground: #102016;
+  --muted: #4d6358;
+  --surface: #f7faf7;
+  --accent: #6f8f28;
+  --accent-hover: #5f7c22;
+  --accent-ink: #f4f8e8;
+  --border: rgb(16 32 22 / 0.12);
+  --header: rgb(238 243 239 / 0.82);
+  --ghost-hover: rgb(16 32 22 / 0.06);
+  --on-media: #f3f7f4;
+  --on-media-muted: #c5d4cb;
+  --scrim: linear-gradient(
+    180deg,
+    rgb(6 20 15 / 0.45) 0%,
+    rgb(6 20 15 / 0.62) 45%,
+    rgb(6 20 15 / 0.8) 100%
   );
 }
 
@@ -30,6 +56,8 @@
   --color-border: var(--border);
   --color-header: var(--header);
   --color-ghost-hover: var(--ghost-hover);
+  --color-on-media: var(--on-media);
+  --color-on-media-muted: var(--on-media-muted);
   --font-display: var(--font-syne);
   --font-body: var(--font-figtree);
   --animate-fade-in: fade-in 0.6s ease both;

@@ -10,8 +10,12 @@ import {
   canCancelStartsAt,
   zonedDateTimeToUtc,
 } from "@/lib/time";
+import { createLimiter, rateConfigs } from "@/lib/rateLimit";
 
 const router = Router();
+
+const availabilityLimiter = createLimiter(rateConfigs.availability);
+const defaultLimiter = createLimiter(rateConfigs.default);
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -366,8 +370,8 @@ async function cancelBooking(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-router.post("/search", requireAuth, listOccupiedSlots);
-router.post("/", requireAuth, createBooking);
-router.post("/:bookingId/cancel", requireAuth, cancelBooking);
+router.post("/search", availabilityLimiter, requireAuth, listOccupiedSlots);
+router.post("/", defaultLimiter, requireAuth, createBooking);
+router.post("/:bookingId/cancel", defaultLimiter, requireAuth, cancelBooking);
 
 export const bookingsRouter = router;

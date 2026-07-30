@@ -18,6 +18,7 @@ export function SignInForm() {
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,6 +36,7 @@ export function SignInForm() {
         body: JSON.stringify({
           email: nextEmail,
           password: nextPassword,
+          rememberMe,
         }),
       });
 
@@ -116,7 +118,12 @@ export function SignInForm() {
         </InputGroup>
         <InputGroup className="gap-2">
           <InputGroupAddon>
-            <Checkbox id="remember" disabled={isSubmitting} />
+            <Checkbox
+              id="remember"
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(Boolean(checked))}
+              disabled={isSubmitting}
+            />
           </InputGroupAddon>
           <label htmlFor="remember" className="text-sm text-background/50">
             Remember me

@@ -5,6 +5,8 @@ import { Role } from "@prisma/client";
 import { frontendUrl } from "@/config";
 import { SignJWT, decodeJwt } from "jose";
 
+const REMEMBER_ME_EXPIRATION = "30d";
+
 export async function authResponse(
   req: Request,
   res: Response,
@@ -20,9 +22,13 @@ export async function authResponse(
   }
   const redirectPath = role === Role.ADMIN ? "/admin/dashboard" : "/dashboard";
   try {
+    const expirationTime = req.rememberMe
+      ? REMEMBER_ME_EXPIRATION
+      : jwtExpiration;
+
     const token = await new SignJWT({ role, id, email })
       .setProtectedHeader({ alg: "HS256" })
-      .setExpirationTime(jwtExpiration)
+      .setExpirationTime(expirationTime)
       .sign(new TextEncoder().encode(jwtSecret as string));
 
     const decoded = decodeJwt(token);

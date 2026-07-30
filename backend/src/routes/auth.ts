@@ -22,6 +22,7 @@ const cookieOptions = {
 const loginSchema = z.object({
   email: z.email("Please enter a valid email address."),
   password: z.string().min(1, "Please enter your password."),
+  rememberMe: z.boolean().optional(),
 });
 
 const registerSchema = z.object({
@@ -51,6 +52,8 @@ async function validateCredentials(
   }
 
   const { email, password } = parsedCredentials.data;
+  req.rememberMe = parsedCredentials.data.rememberMe ?? false;
+
   const user = await prisma.user.findUnique({
     where: { email },
     select: {

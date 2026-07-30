@@ -9,6 +9,8 @@ import { AppError } from "@/errors/AppError";
 const router = Router();
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const courtInclude = {
   sportType: {
@@ -69,6 +71,9 @@ function getCourtIdParam(req: Request) {
   const courtId = req.params.courtId;
   if (typeof courtId !== "string" || courtId.length === 0) {
     throw new AppError(400, "Court id is required.");
+  }
+  if (!uuidPattern.test(courtId)) {
+    throw new AppError(404, "Court not found.");
   }
   return courtId;
 }

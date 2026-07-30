@@ -1,4 +1,4 @@
-import { CourtsList } from "@/components/admin/CourtsList";
+import { CourtsList } from "@/components/common/CourtsList";
 
 export default function AdminDashboardPage() {
   return (
@@ -13,7 +13,7 @@ export default function AdminDashboardPage() {
         </p>
 
         <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-card p-2 text-card-foreground sm:p-4">
-          <CourtsList />
+          <CourtsList editable />
         </div>
       </div>
     </main>

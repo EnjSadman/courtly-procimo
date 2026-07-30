@@ -31,6 +31,17 @@ jest.mock("@/routes/courts", () => {
   return { courtsRouter: router };
 });
 
+jest.mock("@/routes/bookings", () => {
+  const express = require("express");
+  const router = express.Router();
+
+  router.get("/mock-bookings", (_req: unknown, res: { sendStatus: (code: number) => void }) => {
+    res.sendStatus(204);
+  });
+
+  return { bookingsRouter: router };
+});
+
 jest.mock("@/routes/sportTypes", () => {
   const express = require("express");
   const router = express.Router();
@@ -67,6 +78,12 @@ describe("app", () => {
 
   it("mounts the courts router under /courts", async () => {
     const response = await request(app).get("/courts/mock-courts");
+
+    expect(response.status).toBe(204);
+  });
+
+  it("mounts the bookings router under /bookings", async () => {
+    const response = await request(app).get("/bookings/mock-bookings");
 
     expect(response.status).toBe(204);
   });

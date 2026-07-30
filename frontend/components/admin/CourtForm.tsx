@@ -20,6 +20,7 @@ import {
 } from "@/lib/api/courts";
 import { listSportTypes } from "@/lib/api/sportTypes";
 import { queryKeys } from "@/lib/api/queryKeys";
+import { getBrowserTimeZone } from "@/lib/courts/hours";
 
 type CourtFormProps = {
   court?: CourtListItem | null;
@@ -81,6 +82,7 @@ export function CourtForm({ court, onClose }: CourtFormProps) {
         hourlyPrice,
         openTime: form.openTime,
         closeTime: form.closeTime,
+        timezone: court?.timezone ?? getBrowserTimeZone(),
         isActive: form.isActive,
       };
 

@@ -1,7 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { CourtForm } from "@/components/admin/CourtForm";
 import {
@@ -10,7 +15,10 @@ import {
   type SelectedSlot,
 } from "@/components/common/CourtAvailabilityPanel";
 import {
+  cancelBooking,
+  createBooking,
   listOccupiedSlots,
+  type MineSlot,
   type OccupiedSlotsResponse,
 } from "@/lib/api/bookings";
 import {
@@ -20,8 +28,8 @@ import {
 } from "@/lib/api/courts";
 import { queryKeys } from "@/lib/api/queryKeys";
 import {
-  addUtcDays,
-  formatUtcDate,
+  addCalendarDays,
+  formatDateInTimeZone,
   occupiedSlotKey,
 } from "@/lib/courts/hours";
 import { cn } from "@/lib/utils";
@@ -44,10 +52,14 @@ function formatPrice(hourlyPrice: string) {
   }).format(amount);
 }
 
-function toOccupiedKeys(response?: OccupiedSlotsResponse) {
-  return (response?.occupied ?? []).map((slot) =>
-    occupiedSlotKey(slot.courtId, slot.startsAt),
-  );
+function toSlotKeys(
+  slots: Array<{ courtId: string; startsAt: string }> = [],
+) {
+  return slots.map((slot) => occupiedSlotKey(slot.courtId, slot.startsAt));
+}
+
+function courtToday(court: CourtListItem) {
+  return formatDateInTimeZone(new Date(), court.timezone);
 }
 
 export function CourtsList({ editable = false }: CourtsListProps) {
@@ -62,18 +74,37 @@ export function CourtsList({ editable = false }: CourtsListProps) {
   const [selectedByCourt, setSelectedByCourt] = useState<
     Record<string, SelectedSlot[]>
   >({});
-
-  const today = formatUtcDate();
-  const viewDate =
-    (expandedCourtId ? viewDateByCourt[expandedCourtId] : undefined) ?? today;
+  const [selectedMineByCourt, setSelectedMineByCourt] = useState<
+    Record<string, string | null>
+  >({});
+  const [bookError, setBookError] = useState("");
 
   const { data, error, isLoading } = useQuery({
     queryKey: queryKeys.courts,
     queryFn: listCourts,
   });
 
-  const courts = data?.courts ?? [];
-  const courtIds = courts.map((court) => court.id);
+  const courts = useMemo(() => {
+    const all = data?.courts ?? [];
+    return editable ? all : all.filter((court) => court.isActive);
+  }, [data?.courts, editable]);
+  const expandedCourt =
+    courts.find((court) => court.id === expandedCourtId) ?? null;
+  const expandedToday = expandedCourt ? courtToday(expandedCourt) : null;
+  const viewDate =
+    (expandedCourtId ? viewDateByCourt[expandedCourtId] : undefined) ??
+    expandedToday;
+
+  const todayGroups = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const court of courts) {
+      const date = courtToday(court);
+      const ids = groups.get(date) ?? [];
+      ids.push(court.id);
+      groups.set(date, ids);
+    }
+    return [...groups.entries()];
+  }, [courts]);
 
   const prefetchCourtDay = useCallback(
     (courtId: string, date: string) => {
@@ -90,51 +121,59 @@ export function CourtsList({ editable = false }: CourtsListProps) {
     [queryClient],
   );
 
-  const todayAvailabilityQuery = useQuery({
-    queryKey: queryKeys.occupiedSlots(today, today, courtIds),
-    queryFn: () =>
-      listOccupiedSlots({
-        date: today,
-        courtIds,
-      }),
-    enabled: courtIds.length > 0,
-    staleTime: AVAILABILITY_STALE_MS,
-    refetchOnMount: "always",
+  const todayQueries = useQueries({
+    queries: todayGroups.map(([date, courtIds]) => ({
+      queryKey: queryKeys.occupiedSlots(date, date, courtIds),
+      queryFn: () =>
+        listOccupiedSlots({
+          date,
+          courtIds,
+        }),
+      staleTime: AVAILABILITY_STALE_MS,
+      refetchOnMount: "always" as const,
+    })),
   });
 
   const viewDayAvailabilityQuery = useQuery({
     queryKey: queryKeys.occupiedSlots(
-      viewDate,
-      viewDate,
+      viewDate ?? "",
+      viewDate ?? "",
       expandedCourtId ? [expandedCourtId] : [],
     ),
     queryFn: () =>
       listOccupiedSlots({
-        date: viewDate,
+        date: viewDate!,
         courtIds: expandedCourtId ? [expandedCourtId] : [],
       }),
-    enabled: Boolean(expandedCourtId) && viewDate !== today,
+    enabled:
+      Boolean(expandedCourtId) &&
+      Boolean(viewDate) &&
+      Boolean(expandedToday) &&
+      viewDate !== expandedToday,
     staleTime: AVAILABILITY_STALE_MS,
     refetchOnMount: "always",
   });
 
   useEffect(() => {
-    if (!expandedCourtId) {
+    if (!expandedCourtId || !expandedToday) {
       return;
     }
 
     for (const offset of [1, 2, 3]) {
-      void prefetchCourtDay(expandedCourtId, addUtcDays(today, offset));
+      void prefetchCourtDay(
+        expandedCourtId,
+        addCalendarDays(expandedToday, offset),
+      );
     }
-  }, [expandedCourtId, today, prefetchCourtDay]);
+  }, [expandedCourtId, expandedToday, prefetchCourtDay]);
 
   useEffect(() => {
-    if (!expandedCourtId) {
+    if (!expandedCourtId || !viewDate) {
       return;
     }
 
-    void prefetchCourtDay(expandedCourtId, addUtcDays(viewDate, -1));
-    void prefetchCourtDay(expandedCourtId, addUtcDays(viewDate, 1));
+    void prefetchCourtDay(expandedCourtId, addCalendarDays(viewDate, -1));
+    void prefetchCourtDay(expandedCourtId, addCalendarDays(viewDate, 1));
   }, [expandedCourtId, viewDate, prefetchCourtDay]);
 
   const statusMutation = useMutation({
@@ -161,42 +200,102 @@ export function CourtsList({ editable = false }: CourtsListProps) {
   const showForm = editable && (isCreating || editingCourt !== null);
 
   const cachedViewDay =
-    expandedCourtId && viewDate !== today
+    expandedCourtId && viewDate && viewDate !== expandedToday
       ? queryClient.getQueryData<OccupiedSlotsResponse>(
           queryKeys.occupiedSlots(viewDate, viewDate, [expandedCourtId]),
         )
       : undefined;
 
   const occupiedKeys = new Set([
-    ...toOccupiedKeys(todayAvailabilityQuery.data),
-    ...toOccupiedKeys(viewDayAvailabilityQuery.data ?? cachedViewDay),
+    ...todayQueries.flatMap((query) => toSlotKeys(query.data?.occupied)),
+    ...toSlotKeys(
+      (viewDayAvailabilityQuery.data ?? cachedViewDay)?.occupied,
+    ),
   ]);
 
+  const mineSlots = [
+    ...todayQueries.flatMap((query) => query.data?.mine ?? []),
+    ...((viewDayAvailabilityQuery.data ?? cachedViewDay)?.mine ?? []),
+  ];
+
+  const todayPending = todayQueries.some(
+    (query) => query.isPending && !query.data,
+  );
   const availabilityPending =
-    viewDate === today
-      ? todayAvailabilityQuery.isPending && !todayAvailabilityQuery.data
+    viewDate && expandedToday && viewDate === expandedToday
+      ? todayPending
       : viewDayAvailabilityQuery.isPending &&
         !viewDayAvailabilityQuery.data &&
         !cachedViewDay;
 
-  function toggleExpanded(courtId: string) {
+  const bookMutation = useMutation({
+    mutationFn: createBooking,
+    onSuccess: async (_result, variables) => {
+      setBookError("");
+      setSelectedByCourt((current) => ({
+        ...current,
+        [variables.courtId]: [],
+      }));
+      setSelectedMineByCourt((current) => ({
+        ...current,
+        [variables.courtId]: null,
+      }));
+      await queryClient.invalidateQueries({
+        queryKey: ["bookings", "occupied"],
+      });
+    },
+    onError: (mutationError) => {
+      setBookError(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Failed to create booking.",
+      );
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: cancelBooking,
+    onSuccess: async () => {
+      setBookError("");
+      if (expandedCourtId) {
+        setSelectedMineByCourt((current) => ({
+          ...current,
+          [expandedCourtId]: null,
+        }));
+      }
+      await queryClient.invalidateQueries({
+        queryKey: ["bookings", "occupied"],
+      });
+    },
+    onError: (mutationError) => {
+      setBookError(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "Failed to cancel booking.",
+      );
+    },
+  });
+
+  function toggleExpanded(court: CourtListItem) {
     setExpandedCourtId((current) => {
-      if (current === courtId) {
+      if (current === court.id) {
         return null;
       }
 
+      const today = courtToday(court);
       setViewDateByCourt((dates) => ({
         ...dates,
-        [courtId]: dates[courtId] ?? today,
+        [court.id]: dates[court.id] ?? today,
       }));
-      return courtId;
+      return court.id;
     });
   }
 
-  function setViewDate(courtId: string, date: string) {
+  function setViewDate(court: CourtListItem, date: string) {
+    const today = courtToday(court);
     setViewDateByCourt((current) => ({
       ...current,
-      [courtId]: date,
+      [court.id]: date < today ? today : date,
     }));
   }
 
@@ -275,6 +374,7 @@ export function CourtsList({ editable = false }: CourtsListProps) {
             <tbody>
               {courts.map((court) => {
                 const isExpanded = expandedCourtId === court.id;
+                const today = courtToday(court);
                 const courtViewDate = viewDateByCourt[court.id] ?? today;
 
                 return (
@@ -287,25 +387,25 @@ export function CourtsList({ editable = false }: CourtsListProps) {
                     >
                       <td
                         className="cursor-pointer px-3 py-3 font-medium text-foreground"
-                        onClick={() => toggleExpanded(court.id)}
+                        onClick={() => toggleExpanded(court)}
                       >
                         {court.name}
                       </td>
                       <td
                         className="cursor-pointer px-3 py-3 text-muted-foreground"
-                        onClick={() => toggleExpanded(court.id)}
+                        onClick={() => toggleExpanded(court)}
                       >
                         {court.sportType}
                       </td>
                       <td
                         className="cursor-pointer px-3 py-3 text-muted-foreground"
-                        onClick={() => toggleExpanded(court.id)}
+                        onClick={() => toggleExpanded(court)}
                       >
                         {formatPrice(court.hourlyPrice)}
                       </td>
                       <td
                         className="cursor-pointer px-3 py-3 text-muted-foreground"
-                        onClick={() => toggleExpanded(court.id)}
+                        onClick={() => toggleExpanded(court)}
                       >
                         {court.openTime}–{court.closeTime}
                       </td>
@@ -313,7 +413,7 @@ export function CourtsList({ editable = false }: CourtsListProps) {
                         <>
                           <td
                             className="cursor-pointer px-3 py-3"
-                            onClick={() => toggleExpanded(court.id)}
+                            onClick={() => toggleExpanded(court)}
                           >
                             <span
                               className={
@@ -368,18 +468,33 @@ export function CourtsList({ editable = false }: CourtsListProps) {
                         >
                           <CourtAvailabilityPanel
                             courtId={court.id}
+                            timezone={court.timezone}
                             openTime={court.openTime}
                             closeTime={court.closeTime}
                             date={courtViewDate}
                             today={today}
-                            onDateChange={(date) =>
-                              setViewDate(court.id, date)
-                            }
+                            onDateChange={(date) => setViewDate(court, date)}
                             occupiedKeys={occupiedKeys}
+                            mineSlots={mineSlots.filter(
+                              (slot) => slot.courtId === court.id,
+                            )}
                             selectable={!editable}
                             selectedSlots={selectedByCourt[court.id] ?? []}
+                            selectedMineBookingId={
+                              selectedMineByCourt[court.id] ?? null
+                            }
                             isLoading={availabilityPending}
+                            isBooking={bookMutation.isPending}
+                            isCancelling={cancelMutation.isPending}
+                            actionError={
+                              expandedCourtId === court.id ? bookError : ""
+                            }
                             onToggleSlot={(slot) => {
+                              setBookError("");
+                              setSelectedMineByCourt((current) => ({
+                                ...current,
+                                [court.id]: null,
+                              }));
                               setSelectedByCourt((current) => ({
                                 ...current,
                                 [court.id]: nextSelectedSlots(
@@ -387,6 +502,29 @@ export function CourtsList({ editable = false }: CourtsListProps) {
                                   slot,
                                 ),
                               }));
+                            }}
+                            onSelectMineSlot={(slot: MineSlot | null) => {
+                              setBookError("");
+                              setSelectedByCourt((current) => ({
+                                ...current,
+                                [court.id]: [],
+                              }));
+                              setSelectedMineByCourt((current) => ({
+                                ...current,
+                                [court.id]: slot?.bookingId ?? null,
+                              }));
+                            }}
+                            onBookSlots={(slots) => {
+                              setBookError("");
+                              bookMutation.mutate({
+                                courtId: court.id,
+                                date: courtViewDate,
+                                hours: slots.map((slot) => slot.hour),
+                              });
+                            }}
+                            onCancelBooking={(bookingId) => {
+                              setBookError("");
+                              cancelMutation.mutate(bookingId);
                             }}
                           />
                         </td>

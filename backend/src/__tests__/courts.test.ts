@@ -53,22 +53,24 @@ function createTestApp() {
 
 const sampleCourts: CourtListRow[] = [
   {
-    id: "court-1",
+    id: "aaaaaaaa-bbbb-4ccc-8ddd-000000000001",
     name: "Central Court",
     sportTypeId: "11111111-1111-4111-8111-111111111111",
     hourlyPrice: new Prisma.Decimal("40.00"),
     openTime: "08:00",
     closeTime: "22:00",
+    timezone: "Europe/Kyiv",
     isActive: true,
     sportType: { name: "Tennis" },
   },
   {
-    id: "court-2",
+    id: "aaaaaaaa-bbbb-4ccc-8ddd-000000000002",
     name: "Padel Arena",
     sportTypeId: "22222222-2222-4222-8222-222222222222",
     hourlyPrice: new Prisma.Decimal("32.50"),
     openTime: "09:00",
     closeTime: "23:00",
+    timezone: "Europe/Kyiv",
     isActive: false,
     sportType: { name: "Padel" },
   },
@@ -80,6 +82,7 @@ const createPayload = {
   hourlyPrice: 45,
   openTime: "08:00",
   closeTime: "21:00",
+  timezone: "Europe/Kyiv",
 };
 
 describe("courts router", () => {
@@ -104,7 +107,7 @@ describe("courts router", () => {
     mockedJwtVerify.mockResolvedValue({
       payload: { id: "user-1", role: Role.USER },
     });
-    mockedFindMany.mockResolvedValue([sampleCourts[0]]);
+    mockedFindMany.mockResolvedValue([sampleCourts[0]!]);
 
     const response = await request(createTestApp())
       .get("/courts")
@@ -156,12 +159,13 @@ describe("courts router", () => {
       id: createPayload.sportTypeId,
     } as Awaited<ReturnType<typeof prisma.sportType.findUnique>>);
     mockedCreate.mockResolvedValue({
-      ...sampleCourts[0],
+      ...sampleCourts[0]!,
       id: "court-3",
       name: "New Court",
       hourlyPrice: new Prisma.Decimal("45.00"),
       openTime: "08:00",
       closeTime: "21:00",
+      timezone: "Europe/Kyiv",
       isActive: true,
     });
 
@@ -174,11 +178,12 @@ describe("courts router", () => {
     expect(response.body).toEqual({
       id: "court-3",
       name: "New Court",
-      sportTypeId: sampleCourts[0].sportTypeId,
+      sportTypeId: sampleCourts[0]!.sportTypeId,
       sportType: "Tennis",
       hourlyPrice: "45.00",
       openTime: "08:00",
       closeTime: "21:00",
+      timezone: "Europe/Kyiv",
       isActive: true,
     });
   });
@@ -188,18 +193,18 @@ describe("courts router", () => {
       payload: { id: "admin-1", role: Role.ADMIN },
     });
     mockedFindUnique.mockResolvedValue({
-      id: "court-1",
+      id: "aaaaaaaa-bbbb-4ccc-8ddd-000000000001",
       openTime: "08:00",
       closeTime: "22:00",
     } as Awaited<ReturnType<typeof prisma.court.findUnique>>);
     mockedUpdate.mockResolvedValue({
-      ...sampleCourts[0],
+      ...sampleCourts[0]!,
       hourlyPrice: new Prisma.Decimal("50.00"),
       isActive: false,
     });
 
     const response = await request(createTestApp())
-      .patch("/courts/court-1")
+      .patch("/courts/aaaaaaaa-bbbb-4ccc-8ddd-000000000001")
       .set("Cookie", "token=admin-token")
       .send({ hourlyPrice: 50, isActive: false });
 
@@ -216,7 +221,7 @@ describe("courts router", () => {
     mockedFindUnique.mockResolvedValue(null);
 
     const response = await request(createTestApp())
-      .patch("/courts/missing")
+      .patch("/courts/cccccccc-dddd-4eee-8fff-000000000099")
       .set("Cookie", "token=admin-token")
       .send({ name: "Ghost" });
 

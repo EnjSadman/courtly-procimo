@@ -44,6 +44,18 @@ export async function requireAuth(
       return next(error);
     }
 
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      typeof (error as { code: unknown }).code === "string"
+    ) {
+      const code = (error as { code: string }).code;
+      if (code.startsWith("ERR_JWT_")) {
+        return next(error);
+      }
+    }
+
     return next(new AppError(401, "Unauthorized"));
   }
 }

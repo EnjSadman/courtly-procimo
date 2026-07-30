@@ -10,7 +10,7 @@ export class ApiError extends Error {
     public status: number,
   ) {
     super(message);
-    this.name = "ApiError";
+    Object.setPrototypeOf(this, ApiError.prototype);
   }
 }
 

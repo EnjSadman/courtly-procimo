@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "TS_NODE_PROJECT=./tsconfig.json node --env-file=.env -r tsconfig-paths/register -r ts-node/register/transpile-only ./src/server.ts",
+    "dev": "TS_NODE_PROJECT=./tsconfig.json node --watch --env-file=.env -r tsconfig-paths/register -r ts-node/register/transpile-only ./src/server.ts",
     "build": "tsc && tsc-alias",
     "start": "node --env-file=.env dist/server.js",
     "db:generate": "prisma generate",
@@ -23,6 +23,8 @@
     "bcrypt": "^6.0.0",
     "cookie": "^0.7.2",
     "cors": "^2.8.6",
+    "date-fns": "^4.4.0",
+    "date-fns-tz": "^3.2.0",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.16.3",

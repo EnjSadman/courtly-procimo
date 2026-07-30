@@ -25,8 +25,14 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     return res.status(400).json({ message: "Invalid request" });
   }
 
-  if (err?.code === "ERR_JWT_EXPIRED") {
-    return res.status(401).json({ message: "Session expired" });
+  if (
+    typeof err?.code === "string" &&
+    err.code.startsWith("ERR_JWT_")
+  ) {
+    if (err.code === "ERR_JWT_EXPIRED") {
+      return res.status(401).json({ message: "Session expired" });
+    }
+    return res.status(401).json({ message: "Invalid session" });
   }
 
   const isProd = process.env.NODE_ENV === "production";

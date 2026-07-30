@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/middleware/requireAuth";
 import { requireAdmin } from "@/middleware/requireAdmin";
 import { AppError } from "@/errors/AppError";
+import { assertValidTimeZone } from "@/lib/time";
 
 const router = Router();
 
@@ -32,6 +33,7 @@ const createCourtSchema = z.object({
   closeTime: z
     .string()
     .regex(timePattern, "Closing time must use HH:MM format."),
+  timezone: z.string().trim().min(1, "Timezone is required."),
   isActive: z.boolean().optional().default(true),
 });
 
@@ -45,6 +47,7 @@ function serializeCourt(
     hourlyPrice: { toFixed: (digits: number) => string };
     openTime: string;
     closeTime: string;
+    timezone: string;
     isActive: boolean;
     sportType: { name: string };
   },
@@ -57,6 +60,7 @@ function serializeCourt(
     hourlyPrice: court.hourlyPrice.toFixed(2),
     openTime: court.openTime,
     closeTime: court.closeTime,
+    timezone: court.timezone,
     isActive: court.isActive,
   };
 }
@@ -126,6 +130,7 @@ async function createCourt(req: Request, res: Response, next: NextFunction) {
 
     const data = parsed.data;
     assertValidHours(data.openTime, data.closeTime);
+    assertValidTimeZone(data.timezone);
 
     const sportType = await prisma.sportType.findUnique({
       where: { id: data.sportTypeId },
@@ -143,6 +148,7 @@ async function createCourt(req: Request, res: Response, next: NextFunction) {
         hourlyPrice: data.hourlyPrice,
         openTime: data.openTime,
         closeTime: data.closeTime,
+        timezone: data.timezone,
         isActive: data.isActive,
       },
       include: courtInclude,
@@ -183,6 +189,10 @@ async function updateCourt(req: Request, res: Response, next: NextFunction) {
     const nextCloseTime = parsed.data.closeTime ?? existing.closeTime;
     assertValidHours(nextOpenTime, nextCloseTime);
 
+    if (parsed.data.timezone) {
+      assertValidTimeZone(parsed.data.timezone);
+    }
+
     if (parsed.data.sportTypeId) {
       const sportType = await prisma.sportType.findUnique({
         where: { id: parsed.data.sportTypeId },
@@ -209,6 +219,9 @@ async function updateCourt(req: Request, res: Response, next: NextFunction) {
           : {}),
         ...(parsed.data.closeTime !== undefined
           ? { closeTime: parsed.data.closeTime }
+          : {}),
+        ...(parsed.data.timezone !== undefined
+          ? { timezone: parsed.data.timezone }
           : {}),
         ...(parsed.data.isActive !== undefined
           ? { isActive: parsed.data.isActive }

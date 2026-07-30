@@ -8,6 +8,7 @@ export type CourtListItem = {
   hourlyPrice: string;
   openTime: string;
   closeTime: string;
+  timezone: string;
   isActive: boolean;
 };
 
@@ -21,6 +22,7 @@ export type CourtInput = {
   hourlyPrice: number;
   openTime: string;
   closeTime: string;
+  timezone: string;
   isActive?: boolean;
 };
 

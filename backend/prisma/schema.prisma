@@ -33,6 +33,7 @@ model Court {
   hourlyPrice Decimal
   openTime    String
   closeTime   String
+  timezone    String        @default("UTC")
   isActive    Boolean       @default(true)
   bookings    Booking[]
   slots       BookingSlot[]

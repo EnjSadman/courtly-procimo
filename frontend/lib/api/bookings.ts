@@ -5,8 +5,16 @@ export type OccupiedSlot = {
   startsAt: string;
 };
 
+export type MineSlot = {
+  courtId: string;
+  startsAt: string;
+  bookingId: string;
+  bookingStartsAt: string;
+};
+
 export type OccupiedSlotsResponse = {
   occupied: OccupiedSlot[];
+  mine: MineSlot[];
 };
 
 export type OccupiedSlotsParams = {
@@ -16,25 +24,45 @@ export type OccupiedSlotsParams = {
   courtIds?: string[];
 };
 
+export type CreateBookingInput = {
+  courtId: string;
+  date: string;
+  hours: string[];
+};
+
+export type CreateBookingResponse = {
+  id: string;
+  courtId: string;
+  startsAt: string;
+  duration: number;
+  price: string;
+  status: string;
+  slots: string[];
+};
+
 export function listOccupiedSlots(params: OccupiedSlotsParams) {
-  const search = new URLSearchParams();
+  return apiFetch<OccupiedSlotsResponse>("/bookings/search", {
+    method: "POST",
+    body: JSON.stringify({
+      ...(params.date ? { date: params.date } : {}),
+      ...(params.from ? { from: params.from } : {}),
+      ...(params.to ? { to: params.to } : {}),
+      ...(params.courtIds && params.courtIds.length > 0
+        ? { courtIds: params.courtIds }
+        : {}),
+    }),
+  });
+}
 
-  if (params.date) {
-    search.set("date", params.date);
-  } else {
-    if (params.from) {
-      search.set("from", params.from);
-    }
-    if (params.to) {
-      search.set("to", params.to);
-    }
-  }
+export function createBooking(input: CreateBookingInput) {
+  return apiFetch<CreateBookingResponse>("/bookings", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
 
-  if (params.courtIds && params.courtIds.length > 0) {
-    search.set("courtIds", params.courtIds.join(","));
-  }
-
-  return apiFetch<OccupiedSlotsResponse>(
-    `/bookings/occupied?${search.toString()}`,
-  );
+export function cancelBooking(bookingId: string) {
+  return apiFetch<void>(`/bookings/${bookingId}/cancel`, {
+    method: "POST",
+  });
 }

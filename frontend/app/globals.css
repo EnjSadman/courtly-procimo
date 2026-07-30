@@ -37,6 +37,8 @@
   --secondary-foreground: #f3f7f4;
   --destructive: oklch(0.704 0.191 22.216);
   --slot-selected: #c6e98a;
+  --slot-mine: #7fa83a;
+  --slot-past: #5a6b62;
   --input: rgb(255 255 255 / 0.15);
   --ring: #c8e06a;
   --radius: 0.625rem;
@@ -87,6 +89,8 @@
   --secondary-foreground: #102016;
   --destructive: oklch(0.577 0.245 27.325);
   --slot-selected: #b7df72;
+  --slot-mine: #4f7a1c;
+  --slot-past: #b7c4bc;
   --input: rgb(16 32 22 / 0.12);
   --ring: #6f8f28;
   --chart-1: #6f8f28;
@@ -129,6 +133,8 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-destructive: var(--destructive);
   --color-slot-selected: var(--slot-selected);
+  --color-slot-mine: var(--slot-mine);
+  --color-slot-past: var(--slot-past);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);

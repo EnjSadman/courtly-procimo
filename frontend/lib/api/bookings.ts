@@ -66,3 +66,36 @@ export function cancelBooking(bookingId: string) {
     method: "POST",
   });
 }
+
+export type DailyBookingSlot = {
+  startsAt: string;
+};
+
+export type DailyBooking = {
+  id: string;
+  userId: string;
+  userEmail: string;
+  courtId: string;
+  courtName: string;
+  sportType: string;
+  startsAt: string;
+  duration: number;
+  price: string;
+  status: string;
+  slots: DailyBookingSlot[];
+};
+
+export type DailyBookingsResponse = {
+  date: string;
+  bookings: DailyBooking[];
+  totalRevenue: string;
+  totalBookings: number;
+  confirmedBookings: number;
+  cancelledBookings: number;
+};
+
+export function getDailyBookings(date: string) {
+  return apiFetch<DailyBookingsResponse>(
+    `/bookings/daily?date=${encodeURIComponent(date)}`,
+  );
+}

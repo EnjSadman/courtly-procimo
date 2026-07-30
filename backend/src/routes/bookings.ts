@@ -1,11 +1,18 @@
-import { Router, type Request, type Response, type NextFunction } from "express";
+import {
+  Router,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import { BookingStatus, Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/middleware/requireAuth";
+import { requireAdmin } from "@/middleware/requireAdmin";
 import { AppError } from "@/errors/AppError";
 import {
   isPastZonedDateTime,
+  localDayRangeToUtc,
   localDateRangeToUtc,
   canCancelStartsAt,
   zonedDateTimeToUtc,
@@ -147,7 +154,7 @@ async function listOccupiedSlots(
           select: {
             startsAt: true,
           },
-          orderBy: [{ startsAt: "asc" }],
+          orderBy: [{ courtId: "asc" }],
         },
       },
     });
@@ -229,7 +236,10 @@ async function createBooking(req: Request, res: Response, next: NextFunction) {
         Number(court.closeTime.slice(3, 5));
 
       if (slotMinutes < openMinutes || slotMinutes >= closeMinutes) {
-        throw new AppError(400, "Selected hours are outside court opening hours.");
+        throw new AppError(
+          400,
+          "Selected hours are outside court opening hours.",
+        );
       }
       if (isPastZonedDateTime(date, hour, court.timezone)) {
         throw new AppError(400, "Cannot book a past time slot.");
@@ -259,7 +269,10 @@ async function createBooking(req: Request, res: Response, next: NextFunction) {
         });
 
         if (conflicts.length > 0) {
-          throw new AppError(409, "One or more selected slots are already booked.");
+          throw new AppError(
+            409,
+            "One or more selected slots are already booked.",
+          );
         }
 
         return tx.booking.create({
@@ -308,7 +321,10 @@ async function createBooking(req: Request, res: Response, next: NextFunction) {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
-        throw new AppError(409, "One or more selected slots are already booked.");
+        throw new AppError(
+          409,
+          "One or more selected slots are already booked.",
+        );
       }
       throw error;
     }
@@ -370,6 +386,118 @@ async function cancelBooking(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+async function getDailyBookings(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const date = typeof req.query.date === "string" ? req.query.date : null;
+    if (!date || !datePattern.test(date)) {
+      throw new AppError(
+        400,
+        "Query parameter `date` must use YYYY-MM-DD format.",
+      );
+    }
+
+    const courts = await prisma.court.findMany({
+      select: { id: true, timezone: true },
+    });
+
+    if (courts.length === 0) {
+      return res.json({
+        date,
+        bookings: [],
+        totalRevenue: "0.00",
+        totalBookings: 0,
+        confirmedBookings: 0,
+        cancelledBookings: 0,
+      });
+    }
+
+    const slotConditions = courts.map((court) => {
+      const { start, end } = localDayRangeToUtc(date, court.timezone);
+      return {
+        courtId: court.id,
+        startsAt: { gte: start, lt: end },
+      };
+    });
+
+    const slots = await prisma.bookingSlot.findMany({
+      where: { OR: slotConditions },
+      include: {
+        booking: {
+          include: {
+            user: { select: { id: true, email: true } },
+            court: { include: { sportType: { select: { name: true } } } },
+            slots: { orderBy: { startsAt: "asc" } },
+          },
+        },
+      },
+      orderBy: { startsAt: "asc" },
+    });
+
+    const bookingMap = new Map<string, (typeof slots)[number]["booking"]>();
+    for (const slot of slots) {
+      if (!bookingMap.has(slot.bookingId)) {
+        bookingMap.set(slot.bookingId, slot.booking);
+      }
+    }
+
+    const bookings = [...bookingMap.values()];
+    bookings.sort((a, b) => {
+      const nameDiff = a.court.name.localeCompare(b.court.name);
+      if (nameDiff !== 0) return nameDiff;
+      return a.startsAt.getTime() - b.startsAt.getTime();
+    });
+
+    let totalRevenue = new Prisma.Decimal(0);
+    let confirmedBookings = 0;
+    let cancelledBookings = 0;
+
+    for (const booking of bookings) {
+      if (booking.status === BookingStatus.CONFIRMED) {
+        totalRevenue = totalRevenue.add(booking.price);
+        confirmedBookings += 1;
+      } else {
+        cancelledBookings += 1;
+      }
+    }
+
+    return res.json({
+      date,
+      bookings: bookings.map((booking) => ({
+        id: booking.id,
+        userId: booking.userId,
+        userEmail: booking.user.email,
+        courtId: booking.courtId,
+        courtName: booking.court.name,
+        sportType: booking.court.sportType.name,
+        startsAt: booking.startsAt.toISOString(),
+        duration: booking.duration,
+        price: booking.price.toFixed(2),
+        status: booking.status,
+        slots: booking.slots.map((slot) => ({
+          startsAt: slot.startsAt.toISOString(),
+        })),
+      })),
+      totalRevenue: totalRevenue.toFixed(2),
+      totalBookings: bookings.length,
+      confirmedBookings,
+      cancelledBookings,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+router.get(
+  "/daily",
+  defaultLimiter,
+  requireAuth,
+  requireAdmin,
+  getDailyBookings,
+);
 router.post("/search", availabilityLimiter, requireAuth, listOccupiedSlots);
 router.post("/", defaultLimiter, requireAuth, createBooking);
 router.post("/:bookingId/cancel", defaultLimiter, requireAuth, cancelBooking);

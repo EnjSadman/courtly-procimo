@@ -68,8 +68,11 @@ const createBookingSchema = z.object({
 function assertConsecutiveHours(hours: string[]) {
   const sorted = [...hours].sort((left, right) => left.localeCompare(right));
   if (sorted.length === 2) {
-    const first = Number(sorted[0]!.slice(0, 2));
-    const second = Number(sorted[1]!.slice(0, 2));
+    if (!sorted[0] || !sorted[1]) {
+      throw new AppError(400, "Selected hours must be consecutive.");
+    }
+    const first = Number(sorted[0].slice(0, 2));
+    const second = Number(sorted[1].slice(0, 2));
     if (second - first !== 1) {
       throw new AppError(400, "Selected hours must be consecutive.");
     }

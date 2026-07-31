@@ -1,61 +1,18 @@
+import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
+import { addDays } from "date-fns";
+
 export function getBrowserTimeZone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
 export function formatDateInTimeZone(date: Date, timeZone: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
+  return formatInTimeZone(date, timeZone, "yyyy-MM-dd");
 }
 
 export function addCalendarDays(dateString: string, days: number) {
-  const date = new Date(`${dateString}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
-function getZonedParts(date: Date, timeZone: string) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    })
-      .formatToParts(date)
-      .filter((part) => part.type !== "literal")
-      .map((part) => [part.type, part.value]),
-  );
-
-  return {
-    year: Number(parts.year),
-    month: Number(parts.month),
-    day: Number(parts.day),
-    hour: Number(parts.hour),
-    minute: Number(parts.minute),
-    second: Number(parts.second),
-  };
-}
-
-function getTimeZoneOffsetMs(utcDate: Date, timeZone: string) {
-  const parts = getZonedParts(utcDate, timeZone);
-  const asLocal = Date.UTC(
-    parts.year,
-    parts.month - 1,
-    parts.day,
-    parts.hour,
-    parts.minute,
-    parts.second,
-  );
-
-  return asLocal - utcDate.getTime();
+  const base = new Date(`${dateString}T00:00:00.000Z`);
+  const result = addDays(base, days);
+  return formatInTimeZone(result, "UTC", "yyyy-MM-dd");
 }
 
 export function zonedDateTimeToUtc(
@@ -63,33 +20,12 @@ export function zonedDateTimeToUtc(
   time: string,
   timeZone: string,
 ) {
-  const wallAsUtc = Date.UTC(
-    Number(date.slice(0, 4)),
-    Number(date.slice(5, 7)) - 1,
-    Number(date.slice(8, 10)),
-    Number(time.slice(0, 2)),
-    Number(time.slice(3, 5)),
-    0,
-    0,
-  );
-
-  let utcMillis = wallAsUtc;
-  for (let index = 0; index < 2; index += 1) {
-    const offset = getTimeZoneOffsetMs(new Date(utcMillis), timeZone);
-    utcMillis = wallAsUtc - offset;
-  }
-
-  return new Date(utcMillis);
-}
-
-export function parseHour(time: string) {
-  const [hour] = time.split(":").map(Number);
-  return hour ?? 0;
+  return fromZonedTime(`${date} ${time}`, timeZone);
 }
 
 export function buildHourSlots(openTime: string, closeTime: string) {
-  const openHour = parseHour(openTime);
-  const closeHour = parseHour(closeTime);
+  const openHour = parseInt(openTime, 10);
+  const closeHour = parseInt(closeTime, 10);
   const slots: string[] = [];
 
   for (let hour = openHour; hour < closeHour; hour += 1) {
@@ -110,17 +46,16 @@ export function isPastSlot(
   now = new Date(),
 ) {
   const today = formatDateInTimeZone(now, timeZone);
-  if (date < today) {
-    return true;
-  }
-  if (date > today) {
-    return false;
-  }
+  if (date < today) return true;
+  if (date > today) return false;
 
-  const parts = getZonedParts(now, timeZone);
-  const slotMinutes = parseHour(hour) * 60;
-  const nowMinutes = parts.hour * 60 + parts.minute;
-  return nowMinutes >= slotMinutes;
+  const currentTime = formatInTimeZone(now, timeZone, "HH:mm");
+  const slotMinutes = parseInt(hour, 10) * 60;
+  const currentMinutes =
+    parseInt(currentTime.slice(0, 2), 10) * 60 +
+    parseInt(currentTime.slice(3, 5), 10);
+
+  return currentMinutes >= slotMinutes;
 }
 
 const CANCEL_LEAD_MS = 2 * 60 * 60 * 1000;

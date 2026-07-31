@@ -78,7 +78,6 @@ import { BookingStatus, Prisma, Role } from "@prisma/client";
 import { jwtVerify } from "jose";
 import { bookingsRouter } from "@/routes/bookings";
 import { errorHandler } from "@/middleware/errorHandler";
-import { prisma } from "@/lib/prisma";
 
 const mockedJwtVerify = jwtVerify as jest.Mock;
 const mockedFindUniqueCourt = mockDb.court.findUnique as jest.Mock;
@@ -573,5 +572,72 @@ describe("GET /bookings/daily", () => {
 
     expect(res.status).toBe(400);
     expect(res.body.message).toContain("YYYY-MM-DD");
+  });
+});
+
+describe("GET /bookings/mine", () => {
+  it("returns the authenticated user's bookings sorted by date", async () => {
+    authAs(Role.USER);
+    mockDb.booking.findMany.mockResolvedValue([
+      {
+        id: "booking-1",
+        userId: "user-1",
+        courtId: sampleCourt.id,
+        startsAt: new Date("2026-07-15T10:00:00.000Z"),
+        duration: 1,
+        price: new Prisma.Decimal("40.00"),
+        status: BookingStatus.CONFIRMED,
+        createdAt: new Date("2026-07-10T00:00:00.000Z"),
+        court: {
+          id: sampleCourt.id,
+          name: "Central Court",
+          sportType: { name: "Tennis" },
+        },
+        slots: [{ startsAt: new Date("2026-07-15T10:00:00.000Z") }],
+      },
+      {
+        id: "booking-2",
+        userId: "user-1",
+        courtId: sampleCourt.id,
+        startsAt: new Date("2026-07-14T08:00:00.000Z"),
+        duration: 2,
+        price: new Prisma.Decimal("80.00"),
+        status: BookingStatus.CANCELLED,
+        createdAt: new Date("2026-07-09T00:00:00.000Z"),
+        court: {
+          id: sampleCourt.id,
+          name: "Central Court",
+          sportType: { name: "Tennis" },
+        },
+        slots: [
+          { startsAt: new Date("2026-07-14T08:00:00.000Z") },
+          { startsAt: new Date("2026-07-14T09:00:00.000Z") },
+        ],
+      },
+    ]);
+
+    const res = await request(createTestApp())
+      .get("/bookings/mine")
+      .set("Cookie", "token=user-token");
+
+    expect(res.status).toBe(200);
+    expect(res.body.bookings).toHaveLength(2);
+    expect(res.body.bookings[0].id).toBe("booking-1");
+    expect(res.body.bookings[0].courtName).toBe("Central Court");
+    expect(res.body.bookings[0].sportType).toBe("Tennis");
+    expect(res.body.bookings[1].status).toBe("CANCELLED");
+    expect(res.body.bookings[1].duration).toBe(2);
+  });
+
+  it("returns empty array when user has no bookings", async () => {
+    authAs(Role.USER, "new-user");
+    mockDb.booking.findMany.mockResolvedValue([]);
+
+    const res = await request(createTestApp())
+      .get("/bookings/mine")
+      .set("Cookie", "token=new-user-token");
+
+    expect(res.status).toBe(200);
+    expect(res.body.bookings).toEqual([]);
   });
 });

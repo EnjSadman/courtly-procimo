@@ -99,3 +99,24 @@ export function getDailyBookings(date: string) {
     `/bookings/daily?date=${encodeURIComponent(date)}`,
   );
 }
+
+export type MyBooking = {
+  id: string;
+  courtId: string;
+  courtName: string;
+  sportType: string;
+  startsAt: string;
+  duration: number;
+  price: string;
+  status: string;
+  slots: { startsAt: string }[];
+  createdAt: string;
+};
+
+export type MyBookingsResponse = {
+  bookings: MyBooking[];
+};
+
+export function getMyBookings() {
+  return apiFetch<MyBookingsResponse>("/bookings/mine");
+}

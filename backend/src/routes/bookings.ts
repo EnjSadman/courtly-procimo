@@ -491,6 +491,47 @@ async function getDailyBookings(
   }
 }
 
+async function listMyBookings(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const userId = req.authenticatedUser?.id;
+    if (!userId) {
+      throw new AppError(401, "Unauthorized");
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where: { userId },
+      include: {
+        court: { include: { sportType: { select: { name: true } } } },
+        slots: { orderBy: { startsAt: "asc" } },
+      },
+      orderBy: { startsAt: "desc" },
+    });
+
+    return res.json({
+      bookings: bookings.map((booking) => ({
+        id: booking.id,
+        courtId: booking.courtId,
+        courtName: booking.court.name,
+        sportType: booking.court.sportType.name,
+        startsAt: booking.startsAt.toISOString(),
+        duration: booking.duration,
+        price: booking.price.toFixed(2),
+        status: booking.status,
+        slots: booking.slots.map((slot) => ({
+          startsAt: slot.startsAt.toISOString(),
+        })),
+        createdAt: booking.createdAt.toISOString(),
+      })),
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 router.get(
   "/daily",
   defaultLimiter,
@@ -498,6 +539,7 @@ router.get(
   requireAdmin,
   getDailyBookings,
 );
+router.get("/mine", defaultLimiter, requireAuth, listMyBookings);
 router.post("/search", availabilityLimiter, requireAuth, listOccupiedSlots);
 router.post("/", defaultLimiter, requireAuth, createBooking);
 router.post("/:bookingId/cancel", defaultLimiter, requireAuth, cancelBooking);
